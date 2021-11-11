@@ -2,97 +2,26 @@ package main
 
 import (
 	"github.com/stripe/stripe-go/v72"
-	"github.com/stripe/stripe-go/v72/paymentintent"
 	"github.com/stripe/stripe-go/v72/charge"
-	"github.com/stripe/stripe-go/v72/paymentmethod"
+	"github.com/stripe/stripe-go/v72/refund"
 )
 
 type Card struct {
 	Secret string
 	Key string
-	Currency string
 }
 
-type Transaction struct {
-	TransactionStatusId int
-	Amount int
-	Currency string
-	BankResponseCode string
-}
-
-func (c *Card) GetPaymentMethodId(number string, month string, year string, cvc string) (*stripe.PaymentMethod, string, error) {
+func (c *Card) CreateCharge(amount int) (*stripe.Charge, string, error) {
 	stripe.Key = c.Secret
 
-	methodParams := &stripe.PaymentMethodParams{
-		Card: &stripe.PaymentMethodCardParams{
-		  Number: stripe.String(number),
-		  ExpMonth: stripe.String(month),
-		  ExpYear: stripe.String(year),
-		  CVC: stripe.String(cvc),
-		},
-		Type: stripe.String("card"),
-	  }
-	  pm, err := paymentmethod.New(methodParams)
-
-	  if err != nil {
-		msg := ""
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			msg = string(stripeErr.Code)
-		}
-		return nil, msg, err
-	}
-
-	return pm, "", nil
-}
-
-
-func (c *Card) CreateCharge(currency string, amount int, paymentMethodId string, customerId string) (*stripe.PaymentIntent, string, error) {
-	stripe.Key = c.Secret
-
-	// _params := &stripe.PaymentMethodAttachParams{
-	// 	Customer: stripe.String(customerId),
-	// }
-	
-	// paymentmethod.Attach(
-	// 	paymentMethodId,
-	// 	_params,
-	// )
-
-	params := &stripe.PaymentIntentParams {
+	params := &stripe.ChargeParams{
 		Amount: stripe.Int64(int64(amount)),
-		Currency: stripe.String(currency),
-		PaymentMethod: stripe.String(paymentMethodId),
-		PaymentMethodTypes: stripe.StringSlice([]string{
-			"card",
-		  }),
-		CaptureMethod: stripe.String(string(stripe.PaymentIntentCaptureMethodManual)),
-		Confirm: stripe.Bool(true),
-		
-	}
-
-	pi, err := paymentintent.New(params)
-
-	if err != nil {
-		msg := ""
-		if stripeErr, ok := err.(*stripe.Error); ok {
-			msg = string(stripeErr.Code)
-		}
-		return nil, msg, err
-	}
-
-	return pi, "", nil
-}
-
-func (c *Card) CaptureCharge(chargeId string, amount int) (*stripe.PaymentIntent, string, error) {
-	stripe.Key = c.Secret
-
-	params := &stripe.PaymentIntentCaptureParams{
-		AmountToCapture: stripe.Int64(int64(amount)),
+		Currency: stripe.String(string(stripe.CurrencyINR)),
+		Source: &stripe.SourceParams{Token: stripe.String("tok_visa")},
+		Capture: stripe.Bool(false),
 	  }
 
-	paymentintent.Confirm(chargeId, nil)
-
-	pi, err := paymentintent.Capture(chargeId, params)
+	ch, err := charge.New(params)
 
 	if err != nil {
 		msg := ""
@@ -102,7 +31,48 @@ func (c *Card) CaptureCharge(chargeId string, amount int) (*stripe.PaymentIntent
 		return nil, msg, err
 	}
 
-	return pi, "", nil
+	return ch, "", nil
+}
+
+func (c *Card) CaptureCharge(chargeId string, amount int) (*stripe.Charge, string, error) {
+	stripe.Key = c.Secret
+
+	params := &stripe.CaptureParams{
+		Amount: stripe.Int64(int64(amount)),
+	  }
+
+	ch, err := charge.Capture(chargeId, params)
+
+	if err != nil {
+		msg := ""
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			msg = string(stripeErr.Code)
+		}
+		return nil, msg, err
+	}
+
+	return ch, "", nil
+}
+
+func (c *Card) CreateRefund(chargeId string, amount int) (*stripe.Refund, string, error) {
+	stripe.Key = c.Secret
+
+	params := &stripe.RefundParams{
+		Charge: stripe.String(chargeId),
+		Amount: stripe.Int64(int64(amount)),
+	  }
+
+	rf, err := refund.New(params)
+
+	if err != nil {
+		msg := ""
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			msg = string(stripeErr.Code)
+		}
+		return nil, msg, err
+	}
+
+	return rf, "", nil
 }
 
 func (c *Card) GetAllCharges() ([]*stripe.Charge, string, error) {
@@ -112,10 +82,10 @@ func (c *Card) GetAllCharges() ([]*stripe.Charge, string, error) {
 	params.Filters.AddFilter("limit", "", "100")
 	i := charge.List(params)
 
-	a := []*stripe.Charge{}
+	ch := []*stripe.Charge{}
 	for i.Next() {
-		a = append(a, i.Charge())
+		ch = append(ch, i.Charge())
 	}
 
-	return a, "", nil
+	return ch, "", nil
 }
