@@ -1,13 +1,6 @@
-SHELL=zsh
 STRIPE_SECRET=sk_test_51JtyRWSIJJvsfEwybunIxSFoXtTlh2SHLrWT5qLcBurcjO1XOdVVLF3r6Box9ETzJF4jncXJ1opAI5saNXtBtkrd00Jp7dFPD2
 STRIPE_KEY=pk_test_51JtyRWSIJJvsfEwyYltHLQXEIAqZ0M8tnuB57qjhVZo3E1jEGfHvI7BMDdpKsv83ko4b9ybpEjvGQWdsL45yh88u00H9jg4ezg
 API_PORT=3000
-
-clean:
-	@echo "Cleaning..."
-	@- rm -f dist/*
-	@go clean
-	@echo "Cleaned!"
 
 build:
 	@echo "Building back end..."
